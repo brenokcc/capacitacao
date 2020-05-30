@@ -46,7 +46,30 @@ Foi realizada uma série de quatro cursos avançados da linguagem de programaç�
 
 - Named tuples
 #### Anotações
-##### lambda, filter, map, reduce, zip
+
+- Escopos
+    
+A palavra reservada "global" serve para acessar variáveis globais.
+    
+A palavra reservada "nonlocal" serve para acessar variáveis em "closures".
+   
+```
+def counter():
+    count = 0 # local variable
+    
+    def inc():
+        nonlocal count  # this is the count variable in counter
+        count += 1
+        return count
+    return inc
+
+c = counter()
+c()
+c()
+print(c.__closure__)
+```    
+
+-  Funções lambda, filter, map, reduce, zip
 ```python
 from functools import reduce
 numbers = [0, 1, 2, 3]
@@ -58,6 +81,51 @@ for n in map(double, numbers): print(n)
 print(reduce(add, numbers))
 for n, pow in zip((1, 2, 3), (1, 4, 9)): print(n, pow)
 ```
+- Decoradores
+
+Decoradores são geralmente implementados como funções:
+
+```
+def html_image(width, height):
+  def decorator(func):
+    def wrapper(*args, **kwargs):
+        url = func(*args, **kwargs)
+        return '<img src="{}" width="{}" height="{}"/>'.format(
+            url, width, height)
+    return wrapper
+  return decorator
+
+@html_image(16, 16)
+def default_icon():
+    return '/media/icons/default.ico'
+
+print(default_icon())
+
+```
+
+Mas podem ser implementados como classes também:
+
+```
+class HtmlImage:
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+    
+    def __call__(self, func):
+        def wrapper(*args, **kwargs):
+            url = func(*args, **kwargs)
+            return '<img src="{}" width="{}" height="{}"/>'.format(
+                url, self.width, self.height)
+        return wrapper
+
+@HtmlImage(16, 16)
+def default_icon():
+    return '/media/icons/default.ico'
+
+print(default_icon())
+
+```
+
 
 ### Parte 02 - Iteração
 
@@ -265,6 +333,31 @@ def open_file(name):
 - JSONSchema, Marshmallow, PyYaml and Serpy
 #### Anotações
 
+- Criando dicionários com UserDict
+
+Permite armazenar os dados em uma estrutura de dados customizável sem necessitar implementar toda a interface de dicionários.
+
+```
+from collections import UserDict
+import json
+class JsonDict(UserDict):
+    def __init__(self, s):
+        self.data = json.loads(s)
+    def __setitem__(self, key, value):
+        self.data[key] = value
+    def __getitem__(self, key):
+        return self.data[key]
+    def __str__(self):
+        return json.dumps(self.data)
+    def __repr__(self):
+        return "JsonDict('{}')".format(str(self))
+
+d = JsonDict('{"a": 1}')
+print(d)
+print(repr(d))
+```
+
+
 ### Parte 04 - POO
     
 #### Conteúdo
@@ -291,9 +384,50 @@ def open_file(name):
 - Metaprogramming (including metaclasses)
 #### Anotações
 
+- Propriedades
+
+Pode ser definidas com decoradores:
+
+```
+from numbers import Integral
+
+class Person:
+    @property
+    def age(self):
+        return getattr(self, '_age', None)
+    
+    @age.setter
+    def age(self, value):
+        if not isinstance(value, Integral):
+            raise ValueError('age: must be an integer.')
+        if value < 0:
+            raise ValueError('age: must be a non-negative integer.')
+        self._age = value
+```
+
+Ou podem ser definidas com a classe "property":
+
+```
+class Person:
+    def get_age(self):
+        return getattr(self, '_age', None)
+    
+    def set_age(self, value):
+        if not isinstance(value, Integral):
+            raise ValueError('age: must be an integer.')
+        if value < 0:
+            raise ValueError('age: must be a non-negative integer.')
+        self._age = value
+        
+    age = property(fget=get_age, fset=set_age)
+```
+
 - Protocolo de Descritores
 
 ```
+def __set_name__(self, cls, name):
+    pass
+
 def __get__(self, obj, cls=None):
     return
 
@@ -303,4 +437,147 @@ def __set__(self, obj, value):
 def __delete__(self, obj):
     pass
 ```
+Aplicação:
+
+```
+class Attribute:
+ def __init__(self, cls_type):
+  self.name = None
+  self.cls_type = cls_type
+ def __set_name__(self, cls, name):
+  self.name = name
+ def __get__(self, obj, cls=None):
+  return obj.__dict__.get(self.name) if obj else self
+ def __set__(self, obj, value):
+  obj.__dict__[self.name] = None if value is None else self.cls_type(value)
+ 
+
+class Object:
+ nome = Attribute(str)
+ idade = Attribute(int) 
+
+o = Object()
+o.nome = 'Breno'
+o.idade = '4'
+
+print(type(o.nome), type(o.idade))
+```
+
+- Métodos
+
+Assim como atributos, é possível definir métodos em tempo de execução.
+
+A definição de novos métodos podem ser a nível classe:
+
+```
+class Object:
+    def x(self):
+        print('x')
+
+def y(self):
+    print('y')
+
+Object.y = y
+
+o = Object()
+o.x()
+o.y()
+```
+
+Ou a nível de instâncias:
+
+```
+import types
+
+class Object:
+    def x(self):
+        print('x')
+
+def y(self):
+    print('y')
+
+o = Object()
+o.y = types.MethodType(y, o)
+
+o.x()
+o.y()
+```
+
+- Criando classes em tempo de execução
+
+Classes podem ser criadas em tempo de execução através de chamadas "type(cls_name, cls_bases, cls_dict)":
+
+```
+Pessoa = type('Pessoa', (), dict(nome=None, idade=None, get_idade=lambda self: self.idade))
+p = Pessoa()
+p.idade = 35
+p.get_idade()
+
+```
+
+
+- Herança, Decoradores e Metaclasse
+
+A inclusão de propriedades (atributos) ou comportamentos (métodos) em classes pode se dar através de herança, decoradores ou metaclasses:
+
+Usando herança:
+
+```
+import json
+class JsonObject:
+    def to_json(self):
+        return json.dumps(self.__dict__)
+
+
+class Person(JsonObject):
+    def __init__(self):
+        self.name = None
+    
+p = Person()
+p.name = 'Breno'
+p.to_json()
+```
+
+Usando decorador:
+
+```
+def json_object(cls):
+    def to_json(self):
+        return json.dumps(self.__dict__)
+    cls.to_json = to_json
+    return cls
+
+@json_object
+class Person(JsonObject):
+    def __init__(self):
+        self.name = None
+
+p = Person()
+p.name = 'Breno'
+p.to_json()
+```
+
+Usando metaclasse:
+
+```
+class JsonType(type):
+    def __new__(mcls, name, bases, class_dict):
+        new_cls = super().__new__(mcls, name, bases, class_dict)
+        def to_json(self):
+            return json.dumps(self.__dict__)
+        new_cls.to_json = to_json
+        return new_cls
+
+class Person(metaclass=JsonType):
+    def __init__(self):
+        self.name = None
+
+p = Person()
+p.name = 'Breno'
+p.to_json()
+
+```
+
+
+
 
