@@ -70,7 +70,7 @@ print(c.__closure__)
 ```    
 
 -  Funções lambda, filter, map, reduce, zip
-```python
+```
 from functools import reduce
 numbers = [0, 1, 2, 3]
 is_par = lambda n: n % 2 == 0
@@ -84,6 +84,44 @@ for n, pow in zip((1, 2, 3), (1, 4, 9)): print(n, pow)
 - Decoradores
 
 Decoradores são geralmente implementados como funções:
+
+```
+def html_image(func):
+    def wrapper(*args, **kwargs):
+        url = func(*args, **kwargs)
+        return '<img src="{}" width="16" height="16"/>'.format(url)
+    return wrapper
+
+@html_image
+def default_icon():
+    return '/media/icons/default.ico'
+
+print(default_icon())
+
+```
+
+Mas podem ser implementados como classes também:
+
+```
+class HtmlImage:
+    def __init__(self, func):
+        self.func = func
+    
+    def __call__(self, *args, **kwargs):
+        url = self.func(*args, **kwargs)
+        return '<img src="{}" width="16" height="16"/>'.format(url)
+
+@HtmlImage
+def default_icon():
+    return '/media/icons/default.ico'
+
+print(default_icon())
+
+```
+
+Caso se deseje passar parâmetros no decorador, é necessário construir uma fábrica de decorador.
+
+
 
 ```
 def html_image(width, height):
@@ -103,7 +141,7 @@ print(default_icon())
 
 ```
 
-Mas podem ser implementados como classes também:
+Ou, alternativamente usando classe:
 
 ```
 class HtmlImage:
@@ -123,6 +161,54 @@ def default_icon():
     return '/media/icons/default.ico'
 
 print(default_icon())
+
+```
+
+Utilize a o decorator @wraps do módulo functools para manter uma melhor identidade da função decorada.
+
+```
+from functools import wraps
+
+def upper(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs).upper()
+    return wrapper
+
+@upper
+def say_hello():
+    return 'hello!'
+
+
+print(say_hello.__name__)
+```
+
+- Decoradores de métodos de classes
+
+```
+import types
+class Logger:
+    def __init__(self, func):
+	    self.func = func
+    def __call__(self, *args, **kwargs):
+	    return self.func(*args, **kwargs)
+    def __get__(self, instance, cls):
+	    print('{} was executed!'.format(self.func.__name__))
+	    if instance is None:
+		    return self
+	    else:
+		    return types.MethodType(self.func, instance)
+
+
+class Person:
+    def __init__(self, name):
+	    self.name = name
+    @Logger
+    def say_hello(self):
+	    return 'Hello {}!'.format(self.name)
+
+p = Person('Breno')
+p.say_hello()
 
 ```
 
@@ -578,6 +664,67 @@ p.to_json()
 
 ```
 
+É possível passar informações extras para metaclasses através de argumentos na definição da classe ou através do método "__ prepare __":
 
+```
+class JsonType(type):
+    def __new__(mcls, name, bases, class_dict, indent):
+        new_cls = super().__new__(mcls, name, bases, class_dict)
+        def to_json(self):
+            return json.dumps(self.__dict__, ensure_ascii=class_dict.get('ensure_ascii', False), indent=indent)
+        new_cls.to_json = to_json
+        return new_cls
+    
+    def __prepare__(name, bases, **kwargs):
+        kwargs.update(ensure_ascii=True)
+        return kwargs
 
+class Person(metaclass=JsonType, indent=4):
+    def __init__(self):
+        self.name = None
+
+p = Person()
+p.name = 'João'
+p.to_json()
+
+```
+
+- Singleton
+
+O padrão de instância única pode ser implementado através do método __ new __:
+
+```
+class Config:
+    config = None
+    def __new__(cls):
+        if cls.config:
+            print('Returning existing instance..')
+        else:
+            print('Creating instance...')
+            cls.config = super().__new__(cls)
+        return cls.config
+
+c1 = Config()
+c2 = Config()
+c3 = Config()
+```
+
+Ou mais genericamente com metaclasse através do método __ call __:
+
+```
+class Singleton(type):
+    def __call__(cls, *args, **kwargs):
+        instance = getattr(cls, '_instance', super().__call__(*args, **kwargs))
+        setattr(cls, '_instance', instance)
+        return instance
+
+class Config(metaclass=Singleton):
+    pass
+
+c1 = Config()
+c2 = Config()
+
+print(c1 is c2)
+
+```
 
