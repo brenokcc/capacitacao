@@ -121,8 +121,6 @@ print(default_icon())
 
 Caso se deseje passar parâmetros no decorador, é necessário construir uma fábrica de decorador.
 
-
-
 ```
 def html_image(width, height):
   def decorator(func):
@@ -211,7 +209,50 @@ p = Person('Breno')
 p.say_hello()
 
 ```
+- Módulos Executáveis
 
+Quando se deseja que um módulo Python seja executável através da linha de comando, geralmente implementa-se o méthod "__ main __":
+
+```
+if __name__ == '__main__':
+    print("Hello World!")
+
+```
+
+Supondo que o módulo se chame "run.py", é possível executá-lo com a seguinte linha de comando:
+
+> python run.py
+
+**OBS**: Ao implementar a função "__ main.py __", o módulo pode ser tando executado quanto importado por outros módulos.
+
+
+Supondo que o módulo se chame "__ main.py __" e se localize no pacote "x.y.z", é possível executá-lo com a seguinte linha de comando:
+
+> python -m x.y.z
+
+- Importação dinâmica de módulos
+
+```
+import importlib
+exceptions = importlib.import_module('django.core.exceptions')
+print(exceptions.ValidationError)
+```
+
+- Tuplas Nomeadas
+
+Servem para estruturar dados cujas propriedades são bem definidas. Diferente de classes, não possuem comportamento (métodos) e servem apenas como estrutura de armazenamento.
+
+```
+from collections import namedtuple
+Pessoa = namedtuple('Pessoa', 'nome sexo email')
+p = Pessoa(nome='Breno', sexo='M', email='brenokcc@yahoo.com.br')
+print(p.nome, p.sexo, p.email)
+
+# definindo valores defaults dos parâmetros
+Pessoa.__new__.__defaults__ = 'M', None
+p = Pessoa(nome='Breno')
+print(p.nome, p.sexo, p.email)
+```
 
 ### Parte 02 - Iteração
 
@@ -331,6 +372,16 @@ d = {n:str(n) for n in range(1, 5)} # dicionário
 g = (x for x in range(1, 5)) # gerador
 ```
  
+- Fatiando Geradores
+
+Para extrair uma fatia de uma sequência implementada como gerador, utiliza-se a função "islice" do módulo itertools:
+
+```
+from itertools import islice
+generator = (n for n in range(1, 10))
+for n in islice(generator, 3, 7):
+    print(n)
+```
 
 - Protocolo de Gerenciador de Contexto
 
@@ -376,7 +427,7 @@ with SSHConnection() as conn:
  conn.execute('pwd')
 ```
 
-Gerenciadores de contexto pode ser implementados sob a forma de gerador ao invés de classe
+Gerenciadores de contexto podem ser implementados sob a forma de gerador ao invés de classe
 
 Exemplo:
 
