@@ -470,6 +470,49 @@ def open_file(name):
 - JSONSchema, Marshmallow, PyYaml and Serpy
 #### Anotações
 
+- Méthodo "__ eq __"
+
+Utilizado para comparação de objetos.
+
+```
+class Pessoa:
+    def __init__(self, nome, email):
+        self.nome = nome
+        self.email = email
+    def __eq__(self, obj):
+        return self.nome == obj.nome
+
+p1 = Pessoa('Breno', 'breno@mail.com')
+p2 = Pessoa('Breno', 'breno@mail.com')
+
+print(p1 == p2)
+```
+
+- Hash de objetos
+
+Necessita a implementação dos méthodos "__ eq __" e "__ hash __".
+
+Utilizado, dentre outras funcionalidades, para definição de chaves nos dicionários.
+
+```
+class Pessoa:
+    def __init__(self, nome, email):
+        self.nome = nome
+        self.email = email
+    def __eq__(self, obj):
+        return self.nome == obj.nome
+    def __hash__(self):
+        return hash(self.nome)
+
+p1 = Pessoa('Breno', 'breno@mail.com')
+p2 = Pessoa('Breno', 'breno@mail.com')
+
+d = {}
+d[p1] = p1
+# apesar de p2 ser outro objeto, ele está "presente" no dicionário
+print(p2 in d)
+```
+
 - Criando dicionários com UserDict
 
 Permite armazenar os dados em uma estrutura de dados customizável sem necessitar implementar toda a interface de dicionários.
@@ -492,6 +535,114 @@ class JsonDict(UserDict):
 d = JsonDict('{"a": 1}')
 print(d)
 print(repr(d))
+```
+
+- Serialização de Objetos
+
+```
+import picle
+class Pessoa:
+    def __init__(self, nome, email=None):
+        self.nome = nome
+        self.email = email
+
+p = Pessoa(nome='Breno')
+
+# serialização em arquivo
+with open('/tmp/out.data', 'wb') as f:
+    pickle.dump(p, f)
+
+with open('/tmp/out.data', 'rb') as f:
+    p = pickle.load(f)
+    print(p.nome, p.email)
+
+# serialização em string
+s = pickle.dumps(p)
+p = pickle.loads(s)
+print(p.nome, p.email)
+```
+
+Picke pode ser perigoso e possibilitar ataques:
+
+```
+import os
+import pickle
+
+
+class Exploit():
+    def __reduce__(self):
+        return os.system, ('pwd',)
+   
+s = pickle.dumps(Exploit())
+o = pickle.loads(s)
+```
+
+- Serialização JSON
+
+Alguns tipos não são serializáveis e ao gerar JSON para eles, é necessário tratá-los.
+
+```
+import json
+from datetime import datetime
+def custom_serialize(o):
+    if isinstance(o, datetime):
+        return dict(objecttype='timestamp', value=datetime.timestamp(o))
+    return o
+
+def custom_deserialize(o):
+    if type(o) == dict and o.get('objecttype') == 'timestamp':
+        return datetime.fromtimestamp(o.get('value'))
+    return o
+
+
+d1 = dict(dicionario = dict(data=datetime.now()), lista=[1, 2, 3], numero=1)
+s = json.dumps(d1, default=custom_serialize)
+d2 = json.loads(s, object_hook=custom_deserialize)
+print(d1 == d2)
+```
+
+- JSON Enconder/Decoder
+
+Como alternativa a solução anterior, a serialização pode ser tratada através da implementação de classes de codificação e codificação.
+
+```
+import json
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return dict(objecttype='timestamp', value=datetime.timestamp(o))
+        return super().default(o)
+
+class CustomJSONDecoder(json.JSONDecoder):
+    def decode(self, s):
+        return self.deserialize(json.loads(s))
+    def deserialize(self, o):
+        if type(o) == dict:
+            if o.get('objecttype') == 'timestamp':
+                return datetime.fromtimestamp(o.get('value'))
+            for key, value in o.items():
+                o[key] = self.deserialize(value)
+        return o
+
+d1 = dict(dicionario = dict(data=datetime.now()), lista=[1, 2, 3], numero=1)
+s = json.dumps(d1, cls=CustomJSONEncoder)
+d2 = json.loads(s, cls=CustomJSONDecoder)
+print(d1 == d2)
+```
+
+- Format YAML
+
+Requer a instalação da biblioteca "pyyaml".
+
+> pip install pyyaml
+
+```
+import yaml
+from datetime import datetime
+d1 = dict(dicionario = dict(data=datetime.now()), lista=[1, 2, 3], numero=1)
+s = yaml.dump(d1)
+d2 = yaml.load(s, Loader=yaml.FullLoader)
+print(d1==d2)
 ```
 
 
