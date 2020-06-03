@@ -47,10 +47,47 @@ Foi realizada uma série de quatro cursos avançados da linguagem de programaç�
 - Named tuples
 #### Anotações
 
+- Arredondamento em Python
+
+Python2:
+>round(1.5) = 2.0
+>
+>round(2.5) = 3.0
+
+
+Python3:
+>round(1.5) = 2
+>
+>round(2.5) = 2
+
+Isso acontece porque no Python3 o arredondamento tende (grosseiramente falando) para o número par mais próximo.
+
+Essa função resolve o problema:
+
+```
+import math
+def round(x):
+    return int(x + 0.5 * math.copysign(1, x))
+```
+
+Python2 / Python3:
+>round(1.5) = 2
+>
+>round(2.5) = 3
+
 - Escopos
     
 A palavra reservada "global" serve para acessar variáveis globais.
     
+```
+count = 0
+
+def inc():
+	global count
+	count += 1
+	return count
+``` 
+   
 A palavra reservada "nonlocal" serve para acessar variáveis em "closures".
    
 ```
